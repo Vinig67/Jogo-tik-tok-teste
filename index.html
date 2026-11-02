@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GameConquest LIVE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #080812;
+      --panel-bg: #0f0f1e;
+      --border: #1e1e38;
+      --primary: #6c63ff;
+      --text: #e0e0f0;
+      --muted: #5a5a8a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow: hidden;
+      color: var(--text);
+    }
+
+    /* ── Layout wrapper ── */
+    #app {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── Left: game canvas area ── */
+    #canvasWrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      position: relative;
+    }
+    #gameCanvas {
+      display: block;
+      box-shadow: 0 0 60px rgba(108,99,255,0.25);
+    }
+
+    /* ── Right: admin panel ── */
+    #adminPanel {
+      width: 320px;
+      min-width: 280px;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 0;
+    }
+    #adminPanel::-webkit-scrollbar { width: 6px; }
+    #adminPanel::-webkit-scrollbar-track { background: var(--panel-bg); }
+    #adminPanel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .panel-header {
+      padding: 20px 20px 0;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+    .panel-header h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff 0%, #a8a2ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+    .panel-header p {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .panel-section {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-section h2 {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    /* Status */
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #555;
+      flex-shrink: 0;
+    }
+    .status-dot.live { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .status-dot.demo { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+    .status-text { font-size: 13px; color: var(--text); }
+
+    /* Input */
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      background: #0a0a1a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: #fff;
+      padding: 8px 12px;
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+    }
+    input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(108,99,255,0.2);
+    }
+    label.field-label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .form-group { margin-bottom: 12px; }
+
+    /* Buttons */
+    .btn {
+      cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 9px 16px;
+      border: none;
+      border-radius: 6px;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #5a52e0; }
+    .btn-success { background: #22c55e; color: #000; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-neutral { background: #1e1e38; color: var(--text); }
+    .btn-neutral:hover { background: #2a2a48; }
+    .btn-full { width: 100%; justify-content: center; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* Team cards */
+    .teams-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .team-card {
+      background: #0a0a1a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .team-card:hover { border-color: var(--primary); }
+    .team-card.selected { border-color: var(--primary); background: rgba(108,99,255,0.1); }
+    .team-card-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .team-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .team-name { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; }
+    .team-cmd { font-size: 11px; color: var(--muted); }
+    .team-pct { font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; }
+
+    /* Event log */
+    #eventLog {
+      list-style: none;
+      max-height: 160px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    #eventLog::-webkit-scrollbar { width: 4px; }
+    #eventLog::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .log-entry {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 4px 8px;
+      background: #0a0a1a;
+      border-radius: 4px;
+      border-left: 3px solid var(--border);
+      line-height: 1.4;
+    }
+    .log-entry .log-user { color: #fff; font-weight: 600; }
+    .log-entry .log-event { color: var(--primary); }
+
+    /* Range */
+    .range-row { display: flex; align-items: center; gap: 10px; }
+    input[type="range"] {
+      flex: 1;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+    }
+    .range-val { font-size: 12px; font-weight: 600; min-width: 36px; text-align: right; }
+
+    /* Mode selector */
+    .mode-tabs { display: flex; gap: 4px; background: #0a0a1a; border-radius: 8px; padding: 4px; }
+    .mode-tab {
+      flex: 1;
+      text-align: center;
+      padding: 7px 4px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .mode-tab.active { background: var(--primary); color: #fff; }
+
+    /* Demo speed */
+    .speed-btns { display: flex; gap: 6px; }
+    .speed-btn {
+      flex: 1; padding: 6px 0;
+      background: #0a0a1a; border: 1px solid var(--border);
+      border-radius: 5px; font-size: 12px; font-weight: 600;
+      cursor: pointer; color: var(--muted); text-align: center;
+      transition: all 0.15s;
+    }
+    .speed-btn.active { border-color: var(--primary); color: #fff; background: rgba(108,99,255,0.15); }
+
+    /* Timer display */
+    .timer-badge {
+      font-family: 'Outfit', sans-serif;
+      font-size: 28px; font-weight: 800;
+      text-align: center;
+      color: #fff;
+      letter-spacing: 2px;
+      padding: 8px;
+      background: #0a0a1a;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    /* Gift fire button */
+    .gift-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .gift-name { flex: 1; font-size: 12px; }
+    .gift-fire {
+      padding: 5px 10px;
+      background: #1e1e38;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--text);
+      transition: all 0.1s;
+    }
+    .gift-fire:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    /* Scoreboard table */
+    .score-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .score-table td { padding: 4px 6px; }
+    .score-table .score-bar-cell { width: 70px; }
+    .score-bar-bg { width: 100%; height: 6px; background: #1e1e38; border-radius: 3px; overflow: hidden; }
+    .score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+    /* Toggle panel button for mobile */
+    #togglePanel {
+      display: none;
+      position: fixed; top: 10px; right: 10px;
+      background: var(--primary); color: #fff;
+      border: none; border-radius: 6px; padding: 8px 12px;
+      font-size: 13px; cursor: pointer; z-index: 100;
+    }
+
+    @media (max-width: 900px) {
+      #adminPanel { display: none; }
+      #adminPanel.visible { display: flex; position: fixed; right: 0; top: 0; bottom: 0; z-index: 50; }
+      #togglePanel { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Canvas area -->
+  <div id="canvasWrap">
+    <canvas id="gameCanvas" width="720" height="1280"></canvas>
+  </div>
+
+  <!-- Admin Panel -->
+  <div id="adminPanel">
+    <div class="panel-header">
+      <h1>⚔️ GameConquest</h1>
+      <p>TikTok LIVE — Painel de Controle</p>
+    </div>
+
+    <!-- Connection / Mode -->
+    <div class="panel-section">
+      <h2>Modo</h2>
+      <div class="mode-tabs" style="margin-bottom: 12px;">
+        <div class="mode-tab active" id="tabDemo" onclick="setMode('demo')">🤖 Demo Auto</div>
+        <div class="mode-tab" id="tabManual" onclick="setMode('manual')">🕹️ Manual</div>
+      </div>
+      <div class="status-row">
+        <div class="status-dot demo" id="statusDot"></div>
+        <span class="status-text" id="statusText">Modo Demo ativo</span>
+      </div>
+      <div class="form-group" id="usernameGroup" style="display:none;">
+        <label class="field-label">Username TikTok (sem @)</label>
+        <input type="text" id="inputUsername" placeholder="seuusuario">
+      </div>
+    </div>
+
+    <!-- Game controls -->
+    <div class="panel-section">
+      <h2>Controles do Jogo</h2>
+      <div style="margin-bottom: 10px;">
+        <div class="timer-badge" id="timerDisplay">10:00</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-success" style="flex:1" onclick="remoteStart()">▶ Iniciar</button>
+        <button class="btn btn-danger" style="flex:1" onclick="remoteReset()">↺ Reset</button>
+      </div>
+    </div>
+
+    <!-- Demo speed -->
+    <div class="panel-section" id="demoSpeedSection">
+      <h2>Velocidade Demo</h2>
+      <div class="speed-btns">
+        <div class="speed-btn" onclick="setDemoSpeed(0.5)">Lento</div>
+        <div class="speed-btn active" onclick="setDemoSpeed(1)">Normal</div>
+        <div class="speed-btn" onclick="setDemoSpeed(2.5)">Rápido</div>
+        <div class="speed-btn" onclick="setDemoSpeed(5)">Turbo</div>
+      </div>
+    </div>
+
+    <!-- Teams scoreboard -->
+    <div class="panel-section">
+      <h2>Times — Placar</h2>
+      <div id="teamCards" class="teams-grid"></div>
+    </div>
+
+    <!-- Manual triggers -->
+    <div class="panel-section" id="manualSection" style="display:none;">
+      <h2>Acionar Manualmente</h2>
+      <div class="form-group">
+        <label class="field-label">Time selecionado</label>
+        <select id="selectTeam">
+          <option value="1">Time 1</option>
+          <option value="2">Time 2</option>
+          <option value="3">Time 3</option>
+          <option value="4">Time 4</option>
+          <option value="5">Time 5</option>
+        </select>
+      </div>
+      <div class="btn-row" style="margin-bottom:10px; flex-wrap: wrap;">
+        <button class="btn btn-neutral" onclick="triggerManual('LIKE')">👍 Like</button>
+        <button class="btn btn-neutral" onclick="triggerManual('COMMENT')">💬 Chat</button>
+        <button class="btn btn-neutral" onclick="triggerManual('FOLLOW')">👤 Follow</button>
+        <button class="btn btn-neutral" onclick="triggerManual('SHARE')">🔗 Share</button>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Disparar Presente</div>
+        <div id="giftButtons"></div>
+      </div>
+    </div>
+
+    <!-- Event log -->
+    <div class="panel-section" style="flex:1;">
+      <h2>Log de Eventos</h2>
+      <ul id="eventLog"></ul>
+    </div>
+
+    <!-- Settings -->
+    <div class="panel-section">
+      <h2>Configurações</h2>
+      <div class="form-group">
+        <label class="field-label">Duração (min)</label>
+        <div class="range-row">
+          <input type="range" id="sliderDuration" min="1" max="30" value="10"
+            oninput="document.getElementById('valDuration').textContent=this.value+'min'; config.game.duration=this.value*60;">
+          <span class="range-val" id="valDuration">10min</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="field-label">Volume</label>
+        <div class="range-row">
+          <input type="range" id="sliderVol" min="0" max="1" step="0.05" value="0.65"
+            oninput="document.getElementById('valVol').textContent=Math.round(this.value*100)+'%'; SoundEngine.setVolume(parseFloat(this.value));">
+          <span class="range-val" id="valVol">65%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button id="togglePanel" onclick="document.getElementById('adminPanel').classList.toggle('visible')">⚙️</button>
+
+<!-- ======================================================
+     SOUNDS ENGINE (adapted from territory-war/sounds.js)
+====================================================== -->
+<script>
+const SoundEngine = (() => {
+  let ctx = null;
+  let masterVolume = 0.65;
+  let enabled = true;
+  let bgmInterval = null;
+
+  function init(volume) {
+    if (volume !== undefined) masterVolume = volume;
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  }
+  function setVolume(v) { masterVolume = v; }
+  function setEnabled(v) { enabled = v; }
+
+  function play(name) {
+    if (!enabled) return;
+    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)()); } catch(e) { return; } }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    try { if (sounds[name]) sounds[name](); } catch(err) {}
+  }
+
+  const sounds = {
+    pop() {
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.value=600;
+      g.gain.setValueAtTime(0.3*masterVolume,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.1);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime+0.1);
+    },
+    coin() {
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine';
+      o.frequency.setValueAtTime(800,ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(1400,ctx.currentTime+0.15);
+      g.gain.setValueAtTime(0.3*masterVolume,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.15);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime+0.15);
+    },
+    bell() {
+      const now=ctx.currentTime;
+      [880,1760].forEach((f,i)=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='sine'; o.frequency.value=f;
+        g.gain.setValueAtTime((i===0?0.2:0.08)*masterVolume,now);
+        g.gain.exponentialRampToValueAtTime(0.001,now+0.8);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(now); o.stop(now+0.8);
+      });
+    },
+    explosion() {
+      const bsz=ctx.sampleRate*0.5;
+      const buf=ctx.createBuffer(1,bsz,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<bsz;i++) d[i]=Math.random()*2-1;
+      const n=ctx.createBufferSource(); n.buffer=buf;
+      const f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=400;
+      const g=ctx.createGain();
+      g.gain.setValueAtTime(0.5*masterVolume,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);
+      n.connect(f); f.connect(g); g.connect(ctx.destination);
+      n.start(); n.stop(ctx.currentTime+0.5);
+    },
+    join() {
+      const now=ctx.currentTime;
+      [523,659,784].forEach((freq,i)=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        const t=now+i*0.07;
+        o.type='sine'; o.frequency.value=freq;
+        g.gain.setValueAtTime(0.3*masterVolume,t);
+        g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t); o.stop(t+0.12);
+      });
+    },
+    spawn() {
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.value=440;
+      g.gain.setValueAtTime(0.15*masterVolume,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.08);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime+0.08);
+    },
+    victory() {
+      const now=ctx.currentTime;
+      [523,659,784,1046,784].forEach((f,i)=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        const t=now+i*0.15;
+        o.type='sine'; o.frequency.value=f;
+        g.gain.setValueAtTime(0.35*masterVolume,t);
+        g.gain.exponentialRampToValueAtTime(0.001,t+0.15);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t); o.stop(t+0.15);
+      });
+    },
+    hit() {
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sawtooth';
+      o.frequency.setValueAtTime(200,ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(80,ctx.currentTime+0.2);
+      g.gain.setValueAtTime(0.25*masterVolume,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.2);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime+0.2);
+    }
+  };
+
+  // Background music (same notes as original)
+  const C4=261.63,D4=293.66,E4=329.63,F4=349.23,G4=392.00,A4=440.00;
+  const C5=523.25,D5=587.33,E5=659.25,F5=698.46,G5=783.99,A5=880.00,B5=987.77;
+  const C6=1046.50,D6=1174.66,E6=1318.51,F6=1396.91;
+  const A3=220.00,E4n=329.63,C3=130.81,F3=174.61,G3=196.00,D3=146.83;
+  const bgmMelody=[
+    E5,0,G5,C6,0,B5,A5,G5,  0,E5,F5,G5,0,F5,E5,D5,
+    C5,0,E5,A5,0,G5,F5,E5,  0,D5,E5,F5,G5,B5,C6,0,
+    E5,0,G5,C6,0,D6,C6,B5,  0,A5,B5,C6,0,B5,A5,G5,
+    A5,0,C6,F6,0,E6,D6,C6,  0,B5,C6,D6,C6,G5,E5,0
+  ];
+  const bgmBass=[
+    C4,G4,C4,G4,C4,G4,C4,G4, A3,E4n,A3,E4n,A3,E4n,A3,E4n,
+    F3,C4,F3,C4,F3,C4,F3,C4, G3,D4,G3,D4,G3,D4,G3,D4,
+    C4,G4,C4,G4,C4,G4,C4,G4, A3,E4n,A3,E4n,A3,E4n,A3,E4n,
+    F3,C4,F3,C4,F3,C4,F3,C4, G3,D4,G3,D4,C4,G4,C4,G4
+  ];
+  let bgmIdx=0;
+
+  function startBGM() {
+    if (!enabled) return;
+    if (!ctx) { try { ctx=new(window.AudioContext||window.webkitAudioContext)(); } catch(e){return;} }
+    if (ctx.state==='suspended') ctx.resume().catch(()=>{});
+    if (bgmInterval) clearInterval(bgmInterval);
+    bgmIdx=0;
+    bgmInterval=setInterval(()=>{
+      if (!enabled||!ctx||ctx.state==='suspended') return;
+      try {
+        const now=ctx.currentTime;
+        const mf=bgmMelody[bgmIdx];
+        if (mf>0) {
+          const o=ctx.createOscillator(), g=ctx.createGain();
+          o.type='square'; o.frequency.value=mf;
+          g.gain.setValueAtTime(0.015*masterVolume,now);
+          g.gain.exponentialRampToValueAtTime(0.001,now+0.12);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(now); o.stop(now+0.14);
+        }
+        const bf=bgmBass[bgmIdx];
+        if (bf>0) {
+          const o=ctx.createOscillator(), g=ctx.createGain();
+          o.type='triangle'; o.frequency.value=bf;
+          g.gain.setValueAtTime(0.035*masterVolume,now);
+          g.gain.exponentialRampToValueAtTime(0.001,now+0.13);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(now); o.stop(now+0.14);
+        }
+        bgmIdx=(bgmIdx+1)%bgmMelody.length;
+      } catch(e) {}
+    },150);
+  }
+  function stopBGM() { if(bgmInterval){clearInterval(bgmInterval);bgmInterval=null;} }
+
+  return { init, play, setVolume, setEnabled, startBGM, stopBGM };
+})();
+</script>
+
+<!-- ======================================================
+     MAIN GAME ENGINE (Territory War — faithful reproduction)
+====================================================== -->
+<script>
+// ── Config (mirrors territory-war/config.json) ──────────
+const config = {
+  game: { duration: 600, title: 'Territory War' },
+  teams: [
+    { id:1, name:'Vermelho', color:'#ff3333', command:'!vermelho' },
+    { id:2, name:'Azul',     color:'#3366ff', command:'!azul'     },
+    { id:3, name:'Verde',    color:'#33aa44', command:'!verde'    },
+    { id:4, name:'Amarelo',  color:'#ffaa00', command:'!amarelo'  },
+    { id:5, name:'Roxo',     color:'#9933cc', command:'!roxo'     }
+  ],
+  events: {
+    comment: { enabled:true, radius:12, units:1 },
+    like:    { enabled:true, radius:20, units:1 },
+    follow:  { enabled:true, radius:38, units:2 },
+    share:   { enabled:true, radius:30, units:1 }
+  },
+  gifts: [
+    { name:'Rose',            diamondValue:1,    action:'attack', damage:15,  radius:28,  sound:'pop',       showName:true },
+    { name:'TikTok',          diamondValue:1,    action:'attack', damage:15,  radius:28,  sound:'pop',       showName:true },
+    { name:'Heart Me',        diamondValue:1,    action:'attack', damage:15,  radius:28,  sound:'pop',       showName:true },
+    { name:'Finger Heart',    diamondValue:5,    action:'attack', damage:25,  radius:35,  sound:'coin',      showName:true },
+    { name:'Doughnut',        diamondValue:30,   action:'attack', damage:60,  radius:55,  sound:'coin',      showName:true },
+    { name:'Hat and Mustache',diamondValue:99,   action:'attack', damage:100, radius:75,  sound:'bell',      showName:true },
+    { name:'Corgi',           diamondValue:399,  action:'attack', damage:150, radius:95,  sound:'bell',      showName:true },
+    { name:'Galaxy',          diamondValue:1000, action:'mega',   damage:220, radius:130, sound:'explosion', showName:true },
+    { name:'Universe',        diamondValue:34999,action:'mega',   damage:600, radius:210, sound:'explosion', showName:true }
+  ],
+  giftDefault: { damagePerDiamond:5, radiusBase:25, sound:'coin', showNameThreshold:50 },
+  sounds: { enabled:true, volume:0.65, join:true, spawn:true, attack:true, bigGift:true, victory:true }
+};
+
+// ── Canvas & Constants ─────────────────────────────────
+const canvas = document.getElementById('gameCanvas');
+const ctx2d  = canvas.getContext('2d');
+const CW = 720, CH = 1280;
+const CELL = 8;
+const COLS = CW / CELL; // 90
+const ROWS = CH / CELL; // 160
+const NEUTRAL = '#1a1a2e';
+
+// ── Game state ─────────────────────────────────────────
+let grid = [];
+let gameRunning = false;
+let gameTime = 600;
+let timerInterval = null;
+let topGifters = {};
+let namePopup = null;
+let particles = [];
+let floatingTexts = [];
+let winnerScreenActive = false;
+let winnerTeam = null;
+let winnerStats = [];
+let activeViewers = new Map();
+let tickerItems = [];
+let tickerX = 0;
+let currentTip = null;
+let tipTimer = 14000;
+let lastTipIndex = -1;
+const TIPS = [
+  '🎨 ESCOLHA SEU TIME: !vermelho, !azul, !verde, !amarelo OU !roxo',
+  '👉 DIGITE NO CHAT PARA ENTRAR EM UM TIME!',
+  '👍 CURTA A LIVE PARA EXPANDIR SEU TERRITÓRIO!',
+  '💬 COMENTE PARA CRIAR NOVAS CÉLULAS!',
+  '👤 SIGA O PERFIL PARA UMA MEGA CONQUISTA!',
+  '🎁 ENVIE PRESENTES PARA DISPARAR ATAQUES!',
+  '⚔️ PRESENTES MAIORES CAUSAM MAIS DANO!',
+  '💥 ENVIE GALAXY OU UNIVERSE PARA UM MEGA COMBO!',
+  '👑 DOMINE O MAPA ANTES DO CRONÔMETRO ZERAR!'
+];
+
+// ── Demo / manual mode ────────────────────────────────
+let appMode = 'demo'; // 'demo' | 'manual'
+let demoSpeed = 1;
+let demoInterval = null;
+const DEMO_USERS = ['TikFan99','LiveLion','BraveHawk','PixelDrake','NovaStar',
+                     'CoolWave','SuperPop','GloryX','HeroRise','MegaFlex',
+                     'LuckyAce','CobraKai','FlashBolt','MoonWolf','ZenBlade'];
+
+// ── Canvas scaling ────────────────────────────────────
+function resizeCanvas() {
+  const wrap = document.getElementById('canvasWrap');
+  const sw = wrap.clientWidth;
+  const sh = wrap.clientHeight;
+  const scale = Math.min(sw / CW, sh / CH);
+  canvas.style.width  = (CW * scale) + 'px';
+  canvas.style.height = (CH * scale) + 'px';
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// ── Grid helpers ──────────────────────────────────────
+function initGrid() {
+  grid = Array.from({length: ROWS}, () => new Uint8Array(COLS));
+  topGifters = {};
+  particles = [];
+  floatingTexts = [];
+  namePopup = null;
+  activeViewers.clear();
+}
+
+function spawnTerritory(teamId, cx, cy, radius) {
+  const col = Math.floor(cx / CELL);
+  const row = Math.floor(cy / CELL);
+  const rC  = radius / CELL;
+  for (let r=Math.max(0,Math.floor(row-rC)); r<=Math.min(ROWS-1,Math.ceil(row+rC)); r++) {
+    for (let c=Math.max(0,Math.floor(col-rC)); c<=Math.min(COLS-1,Math.ceil(col+rC)); c++) {
+      if (Math.hypot(c-col,r-row)<=rC) {
+        if (grid[r][c]===0) {
+          grid[r][c]=teamId;
+        } else if (grid[r][c]!==teamId && Math.random()<0.30) {
+          grid[r][c]=teamId;
+        }
+      }
+    }
+  }
+  const tc = config.teams.find(t=>t.id===teamId)?.color||'#fff';
+  addParticle(cx,cy,radius,tc,'spawn');
+}
+
+function attackTerritory(teamId, damage, radius) {
+  const stats = getTeamStats();
+  const enemies = stats.filter(s=>s.id!==teamId&&s.count>0);
+  let tx=Math.random()*CW, ty=Math.random()*CH;
+  if (enemies.length>0) {
+    const strongest=enemies[0];
+    let sx=0,sy=0,cnt=0;
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
+      if(grid[r][c]===strongest.id){sx+=c*CELL+CELL/2;sy+=r*CELL+CELL/2;cnt++;}
+    }
+    if(cnt>0){
+      tx=(sx/cnt)+(Math.random()-0.5)*80;
+      ty=(sy/cnt)+(Math.random()-0.5)*80;
+      tx=Math.max(20,Math.min(CW-20,tx));
+      ty=Math.max(20,Math.min(CH-20,ty));
+    }
+  }
+  const col=Math.floor(tx/CELL), row=Math.floor(ty/CELL), rC=radius/CELL;
+  for(let r=Math.max(0,Math.floor(row-rC));r<=Math.min(ROWS-1,Math.ceil(row+rC));r++) {
+    for(let c=Math.max(0,Math.floor(col-rC));c<=Math.min(COLS-1,Math.ceil(col+rC));c++) {
+      if(Math.hypot(c-col,r-row)<=rC) {
+        if(grid[r][c]!==teamId&&grid[r][c]!==0&&Math.random()<0.80) grid[r][c]=teamId;
+      }
+    }
+  }
+  addParticle(tx,ty,radius,'#ff5500','explosion');
+  addParticle(tx,ty,radius*0.6,'#ffffff','explosion');
+}
+
+function getRandomTeamPos(teamId) {
+  const cells=[];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]===teamId) cells.push({r,c});
+  if(cells.length===0) return {x:Math.random()*CW,y:Math.random()*CH};
+  const cell=cells[Math.floor(Math.random()*cells.length)];
+  return {x:cell.c*CELL+CELL/2,y:cell.r*CELL+CELL/2};
+}
+
+function getTeamStats() {
+  const counts={};
+  config.teams.forEach(t=>counts[t.id]=0);
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
+    const v=grid[r][c];
+    if(v!==0) counts[v]=(counts[v]||0)+1;
+  }
+  const tot=ROWS*COLS;
+  return config.teams.map(t=>{
+    const count=counts[t.id]||0;
+    return {id:t.id,name:t.name,color:t.color,count,percent:count/tot*100};
+  }).sort((a,b)=>b.count-a.count);
+}
+
+// ── Particles ─────────────────────────────────────────
+function addParticle(x,y,radius,color,type) {
+  particles.push({x,y,radius:type==='spawn'?1:2,maxRadius:radius,color,alpha:1,speed:type==='spawn'?0.05:0.15,type});
+}
+function updateParticles() {
+  for(let i=particles.length-1;i>=0;i--) {
+    const p=particles[i];
+    p.radius+=(p.maxRadius-p.radius)*p.speed;
+    p.alpha-=p.type==='spawn'?0.02:0.04;
+    if(p.alpha<=0||p.radius>=p.maxRadius-0.5) particles.splice(i,1);
+  }
+}
+
+// ── Name popup ────────────────────────────────────────
+function updateNamePopup() {
+  if(!namePopup) return;
+  namePopup.timer+=16.67;
+  if(namePopup.phase==='in'){
+    namePopup.alpha+=0.05;
+    if(namePopup.alpha>=1){namePopup.alpha=1;namePopup.phase='show';namePopup.timer=0;}
+  } else if(namePopup.phase==='show'){
+    if(namePopup.timer>=2500) namePopup.phase='out';
+  } else {
+    namePopup.alpha-=0.03;
+    if(namePopup.alpha<=0) namePopup=null;
+  }
+}
+
+// ── Game flow ─────────────────────────────────────────
+function startGame() {
+  SoundEngine.init(config.sounds.volume);
+  initGrid();
+  gameRunning=true;
+  gameTime=config.game.duration;
+  currentTip=null;
+  tipTimer=3000;
+  winnerScreenActive=false;
+  winnerTeam=null;
+  if(timerInterval) clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    if(!gameRunning) return;
+    gameTime--;
+    updateTimerUI();
+    if(gameTime<=0){clearInterval(timerInterval);endGame();}
+  },1000);
+  SoundEngine.play('join');
+  SoundEngine.startBGM();
+  if(appMode==='demo') startDemo();
+  updateTimerUI();
+}
+
+function endGame() {
+  gameRunning=false;
+  clearInterval(timerInterval);
+  stopDemo();
+  const stats=getTeamStats();
+  winnerStats=stats;
+  winnerTeam=stats[0];
+  winnerScreenActive=true;
+  SoundEngine.play('victory');
+  SoundEngine.stopBGM();
+  setTimeout(()=>{
+    winnerScreenActive=false;
+    winnerTeam=null;
+    activeViewers.clear();
+    if(appMode==='demo') setTimeout(startGame,1000);
+  },5000);
+}
+
+function resetGame() {
+  gameRunning=false;
+  winnerScreenActive=false;
+  if(timerInterval) clearInterval(timerInterval);
+  SoundEngine.stopBGM();
+  stopDemo();
+  initGrid();
+  gameTime=config.game.duration;
+  updateTimerUI();
+}
+
+function updateTimerUI() {
+  const m=Math.floor(gameTime/60), s=gameTime%60;
+  document.getElementById('timerDisplay').textContent=
+    m.toString().padStart(2,'0')+':'+s.toString().padStart(2,'0');
+}
+
+// ── Demo engine ───────────────────────────────────────
+let rrIdx=0;
+const userTeams={};
+
+function getOrAssignTeam(user) {
+  if(!userTeams[user]) {
+    const t=config.teams[rrIdx%config.teams.length];
+    rrIdx++;
+    userTeams[user]=t.id;
+  }
+  return userTeams[user];
+}
+
+function startDemo() {
+  stopDemo();
+  const baseMs=1200/demoSpeed;
+  demoInterval=setInterval(fireDemoEvent,baseMs);
+}
+function stopDemo() {
+  if(demoInterval){clearInterval(demoInterval);demoInterval=null;}
+}
+function setDemoSpeed(s) {
+  demoSpeed=s;
+  document.querySelectorAll('.speed-btn').forEach(b=>b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  if(gameRunning&&appMode==='demo') startDemo();
+}
+
+const EVENT_TYPES=['LIKE','LIKE','LIKE','COMMENT','COMMENT','FOLLOW','SHARE','GIFT','JOIN'];
+function fireDemoEvent() {
+  if(!gameRunning) return;
+  const user=DEMO_USERS[Math.floor(Math.random()*DEMO_USERS.length)];
+  const etype=EVENT_TYPES[Math.floor(Math.random()*EVENT_TYPES.length)];
+  if(etype==='JOIN') {
+    const t=config.teams[Math.floor(Math.random()*config.teams.length)];
+    userTeams[user]=t.id;
+    handleEvent({type:'JOIN',team:t.id,user,teamName:t.name});
+  } else if(etype==='GIFT') {
+    const gift=config.gifts[Math.floor(Math.random()*config.gifts.length)];
+    const tid=getOrAssignTeam(user);
+    handleEvent({type:'GIFT',team:tid,user,
+      giftName:gift.name,damage:gift.damage,radius:gift.radius,
+      sound:gift.sound,showName:gift.showName,
+      diamondValue:gift.diamondValue,action:gift.action});
+  } else {
+    const tid=getOrAssignTeam(user);
+    const ev=config.events[etype.toLowerCase()];
+    handleEvent({type:etype,team:tid,user,
+      radius:ev.radius,units:ev.units||1,points:10});
+  }
+}
+
+// ── Event handler ─────────────────────────────────────
+function handleEvent(data) {
+  const sounds=config.sounds;
+  addLog(data);
+  
+  // Track viewer
+  if(data.user) {
+    const key=data.user.toLowerCase();
+    activeViewers.set(key,{
+      team:data.team,name:data.user,
+      lastSeen:Date.now()
+    });
+    if(activeViewers.size>5) {
+      let oldKey=null,oldT=Infinity;
+      for(const[k,v] of activeViewers.entries()) if(v.lastSeen<oldT){oldT=v.lastSeen;oldKey=k;}
+      if(oldKey) activeViewers.delete(oldKey);
+    }
+  }
+
+  switch(data.type) {
+    case 'JOIN':
+      if(sounds.enabled&&sounds.join) SoundEngine.play('join');
+      floatingTexts.push({
+        x:Math.random()*(CW-400)+100,y:CH-80,
+        text:`👉 ${data.user} entrou no time ${data.teamName}!`,
+        color:config.teams.find(t=>t.id===data.team)?.color||'#fff',
+        alpha:1,speedY:-1
+      });
+      break;
+
+    case 'COMMENT':
+    case 'LIKE':
+    case 'FOLLOW':
+    case 'SHARE':
+      if(!gameRunning) return;
+      const pos=getRandomTeamPos(data.team);
+      spawnTerritory(data.team,pos.x,pos.y,data.radius);
+      if(sounds.enabled&&sounds.spawn) SoundEngine.play('spawn');
+      break;
+
+    case 'GIFT':
+      if(!gameRunning) return;
+      if(data.showName) {
+        namePopup={text:`${data.user} enviou ${data.giftName}!`,alpha:0,phase:'in',timer:0};
+        if(sounds.enabled&&sounds.bigGift) SoundEngine.play(data.sound||'bell');
+      } else {
+        if(sounds.enabled&&sounds.attack) SoundEngine.play(data.sound||'coin');
+      }
+      if(data.action==='mega') {
+        attackTerritory(data.team,data.damage,data.radius);
+        setTimeout(()=>{ if(gameRunning) attackTerritory(data.team,data.damage*0.5,data.radius*0.6); },150);
+      } else {
+        attackTerritory(data.team,data.damage,data.radius);
+      }
+      if(!topGifters[data.user]) topGifters[data.user]=0;
+      topGifters[data.user]+=(data.diamondValue||0);
+      break;
+
+    case 'RESET':
+      resetGame();
+      break;
+    case 'START':
+      if(!gameRunning&&!winnerScreenActive) startGame();
+      break;
+  }
+  updateScorePanel();
+}
+
+// ── Manual triggers ───────────────────────────────────
+function triggerManual(evType) {
+  SoundEngine.init();
+  const tid=parseInt(document.getElementById('selectTeam').value);
+  const user='Host';
+  if(evType==='LIKE'||evType==='COMMENT'||evType==='FOLLOW'||evType==='SHARE') {
+    const ev=config.events[evType.toLowerCase()]||{radius:20,units:1};
+    handleEvent({type:evType,team:tid,user,radius:ev.radius,units:ev.units||1});
+  }
+}
+function remoteStart(){ SoundEngine.init(); if(!gameRunning&&!winnerScreenActive) startGame(); }
+function remoteReset(){ SoundEngine.init(); resetGame(); }
+function setMode(m) {
+  appMode=m;
+  document.getElementById('tabDemo').classList.toggle('active',m==='demo');
+  document.getElementById('tabManual').classList.toggle('active',m==='manual');
+  document.getElementById('demoSpeedSection').style.display=m==='demo'?'':'none';
+  document.getElementById('manualSection').style.display=m==='manual'?'':'none';
+  document.getElementById('usernameGroup').style.display=m==='manual'?'':'none';
+  const dot=document.getElementById('statusDot');
+  dot.className='status-dot '+(m==='demo'?'demo':'live');
+  document.getElementById('statusText').textContent=m==='demo'?'Modo Demo ativo':'Modo Manual (sem TikTok)';
+  if(gameRunning) { if(m==='demo') startDemo(); else stopDemo(); }
+}
+
+// ── Log ───────────────────────────────────────────────
+function addLog(data) {
+  const log=document.getElementById('eventLog');
+  const li=document.createElement('li');
+  li.className='log-entry';
+  const tc=config.teams.find(t=>t.id===data.team);
+  const dot=tc?`<span style="color:${tc.color}">●</span> `:'';
+  const icons={JOIN:'👥',LIKE:'👍',COMMENT:'💬',FOLLOW:'👤',SHARE:'🔗',GIFT:'🎁'};
+  li.innerHTML=`${dot}<span class="log-user">${data.user||'?'}</span> <span class="log-event">${icons[data.type]||data.type}</span>${data.giftName?' '+data.giftName:''}`;
+  log.prepend(li);
+  if(log.children.length>30) log.lastChild.remove();
+}
+
+// ── Score panel ───────────────────────────────────────
+function updateScorePanel() {
+  const stats=getTeamStats();
+  const container=document.getElementById('teamCards');
+  container.innerHTML='';
+  stats.forEach(s=>{
+    const div=document.createElement('div');
+    div.className='team-card';
+    div.innerHTML=`
+      <div class="team-card-top">
+        <div class="team-dot" style="background:${s.color}"></div>
+        <span class="team-name" style="color:${s.color}">${s.name}</span>
+      </div>
+      <div class="team-pct">${s.percent.toFixed(1)}<span style="font-size:12px;color:var(--muted)">%</span></div>
+      <div class="score-bar-bg"><div class="score-bar-fill" style="width:${Math.min(s.percent,100)}%;background:${s.color}"></div></div>
+      <div class="team-cmd">${s.count} células</div>`;
+    container.appendChild(div);
+  });
+}
+
+// ── Gift buttons in manual panel ──────────────────────
+function buildGiftButtons() {
+  const cont=document.getElementById('giftButtons');
+  config.gifts.forEach(g=>{
+    const row=document.createElement('div');
+    row.className='gift-row';
+    row.innerHTML=`<span class="gift-name">🎁 ${g.name}</span>
+      <button class="gift-fire" onclick="fireGift('${g.name}')">Disparar</button>`;
+    cont.appendChild(row);
+  });
+}
+function fireGift(name) {
+  SoundEngine.init();
+  const g=config.gifts.find(x=>x.name===name);
+  const tid=parseInt(document.getElementById('selectTeam').value);
+  if(g) handleEvent({type:'GIFT',team:tid,user:'Host',
+    giftName:g.name,damage:g.damage,radius:g.radius,
+    sound:g.sound,showName:g.showName,
+    diamondValue:g.diamondValue,action:g.action});
+}
+
+// ── Ticker items ──────────────────────────────────────
+function initTicker() {
+  tickerItems=[];
+  tickerItems.push({emoji:'👍',effect:'Expande'});
+  tickerItems.push({emoji:'💬',effect:'Spawn'});
+  tickerItems.push({emoji:'🔗',effect:'Expande'});
+  tickerItems.push({emoji:'👤',effect:'Mega Exp.'});
+  config.gifts.forEach(g=>{
+    tickerItems.push({giftName:g.name,effect:g.action==='mega'?`Mega +${g.damage}`:`+${g.damage} dano`});
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDER LOOP (faithful to territory-war/public/game.html)
+// ══════════════════════════════════════════════════════
+const startBtn={x:240,y:850,w:240,h:50};
+
+function drawGrid() {
+  for(let r=0;r<ROWS;r++) {
+    for(let c=0;c<COLS;c++) {
+      const v=grid[r][c];
+      if(v===0) {
+        ctx2d.fillStyle=NEUTRAL;
+        ctx2d.fillRect(c*CELL+0.5,r*CELL+0.5,CELL-1,CELL-1);
+      } else {
+        const t=config.teams.find(tm=>tm.id===v);
+        if(t){ ctx2d.fillStyle=t.color; ctx2d.fillRect(c*CELL,r*CELL,CELL,CELL); }
+      }
+    }
+  }
+}
+
+function drawParticles() {
+  ctx2d.save();
+  particles.forEach(p=>{
+    ctx2d.fillStyle=p.color;
+    ctx2d.globalAlpha=p.alpha;
+    ctx2d.beginPath();
+    ctx2d.arc(p.x,p.y,p.radius,0,Math.PI*2);
+    ctx2d.fill();
+  });
+  ctx2d.restore();
+}
+
+function drawScoreboard(stats) {
+  const tp={};
+  stats.forEach(s=>tp[s.id]=s.percent);
+  const text=`🔴${(tp[1]||0).toFixed(1)}%  🔵${(tp[2]||0).toFixed(1)}%  🟢${(tp[3]||0).toFixed(1)}%  🟡${(tp[4]||0).toFixed(1)}%  🟣${(tp[5]||0).toFixed(1)}%`;
+  ctx2d.save();
+  ctx2d.textAlign='center'; ctx2d.textBaseline='middle';
+  ctx2d.font='bold 13px Outfit,Inter,sans-serif';
+  ctx2d.fillStyle='rgba(0,0,0,0.4)';
+  ctx2d.beginPath();
+  ctx2d.roundRect?ctx2d.roundRect(120,118,480,24,12):ctx2d.rect(120,118,480,24);
+  ctx2d.fill();
+  ctx2d.fillStyle='#fff';
+  ctx2d.fillText(text,CW/2,130);
+  ctx2d.restore();
+}
+
+function drawTimer() {
+  const m=Math.floor(gameTime/60), s=gameTime%60;
+  const ts=m.toString().padStart(2,'0')+':'+s.toString().padStart(2,'0');
+  const capX=(CW-160)/2, capY=290;
+  ctx2d.save();
+  ctx2d.fillStyle='rgba(10,10,20,0.75)';
+  ctx2d.strokeStyle='rgba(108,99,255,0.5)';
+  ctx2d.lineWidth=2;
+  ctx2d.beginPath();
+  ctx2d.roundRect?ctx2d.roundRect(capX,capY,160,50,12):ctx2d.rect(capX,capY,160,50);
+  ctx2d.fill(); ctx2d.stroke();
+  ctx2d.textAlign='center'; ctx2d.textBaseline='middle';
+  let scale=1;
+  if(gameTime<30&&gameTime>0){ ctx2d.fillStyle='#ff4444'; scale=1+0.08*Math.sin(Date.now()/150); }
+  else ctx2d.fillStyle='#fff';
+  ctx2d.font=`bold ${Math.floor(32*scale)}px Outfit,Inter,sans-serif`;
+  ctx2d.shadowColor='rgba(0,0,0,0.5)'; ctx2d.shadowBlur=4;
+  ctx2d.fillText(ts,CW/2,capY+25);
+  ctx2d.restore();
+}
+
+function drawNamePopup() {
+  if(!namePopup) return;
+  ctx2d.save();
+  ctx2d.textAlign='center'; ctx2d.textBaseline='middle';
+  ctx2d.font='bold 36px Outfit,Inter,sans-serif';
+  ctx2d.shadowColor='black'; ctx2d.shadowBlur=12;
+  ctx2d.shadowOffsetX=3; ctx2d.shadowOffsetY=3;
+  const grad=ctx2d.createLinearGradient(0,610,0,670);
+  grad.addColorStop(0,'#ffe066'); grad.addColorStop(0.5,'#f5af19'); grad.addColorStop(1,'#e65c00');
+  ctx2d.fillStyle=grad;
+  ctx2d.globalAlpha=namePopup.alpha;
+  ctx2d.fillText(namePopup.text,360,640);
+  ctx2d.restore();
+}
+
+function drawTopGifters() {
+  const sorted=Object.entries(topGifters)
+    .map(([u,d])=>({u,d})).sort((a,b)=>b.d-a.d).slice(0,3);
+  if(!sorted.length) return;
+  ctx2d.save();
+  ctx2d.fillStyle='rgba(10,10,20,0.7)';
+  ctx2d.strokeStyle='#2a2a3e'; ctx2d.lineWidth=2;
+  ctx2d.beginPath();
+  ctx2d.roundRect?ctx2d.roundRect(10,1100,700,165,10):ctx2d.rect(10,1100,700,165);
+  ctx2d.fill(); ctx2d.stroke();
+  ctx2d.fillStyle='#ffd700';
+  ctx2d.font='bold 15px Outfit,Inter,sans-serif';
+  ctx2d.fillText('🏆 Top Colaboradores',25,1125);
+  const medals=['🥇','🥈','🥉'];
+  sorted.forEach((item,i)=>{
+    const x=30+i*220;
+    ctx2d.font='bold 14px Inter,sans-serif'; ctx2d.fillStyle='#fff';
+    ctx2d.fillText(`${medals[i]} ${item.u}`,x,1155);
+    ctx2d.fillStyle='#00e5ff';
+    ctx2d.fillText(`${item.d} ♦`,x,1180);
+  });
+  ctx2d.restore();
+}
+
+function drawAvatars() {
+  const viewers=Array.from(activeViewers.values()).sort((a,b)=>b.lastSeen-a.lastSeen).slice(0,5);
+  const totalSlots=5, rad=45, sp=CW/(totalSlots+1), y=55;
+  for(let i=0;i<totalSlots;i++) {
+    const x=sp*(i+1);
+    const v=viewers[i];
+    ctx2d.save();
+    if(v) {
+      const tc=config.teams.find(t=>t.id===v.team)?.color||'#fff';
+      ctx2d.fillStyle=tc;
+      ctx2d.beginPath(); ctx2d.arc(x,y,rad,0,Math.PI*2); ctx2d.fill();
+      ctx2d.fillStyle='#fff';
+      ctx2d.font=`bold ${Math.floor(rad*0.7)}px Inter,sans-serif`;
+      ctx2d.textAlign='center'; ctx2d.textBaseline='middle';
+      ctx2d.fillText(v.name.charAt(0).toUpperCase(),x,y);
+      ctx2d.strokeStyle=tc; ctx2d.lineWidth=4;
+      ctx2d.beginPath(); ctx2d.arc(x,y,rad,0,Math.PI*2); ctx2d.stroke();
+      ctx2d.textAlign='center'; ctx2d.textBaseline='top';
+      ctx2d.fillStyle=tc; ctx2d.font='bold 11px Inter,sans-serif';
+      const dn=v.name.length>10?v.name.slice(0,8)+'..':v.name;
+      ctx2d.fillText(dn,x,y+rad+5);
+    } else {
+      ctx2d.strokeStyle='#2a2a3e'; ctx2d.lineWidth=2;
+      ctx2d.setLineDash([4,4]);
+      ctx2d.fillStyle='rgba(28,28,46,0.4)';
+      ctx2d.beginPath(); ctx2d.arc(x,y,rad,0,Math.PI*2);
+      ctx2d.fill(); ctx2d.stroke(); ctx2d.setLineDash([]);
+      ctx2d.fillStyle='#3f3f5c'; ctx2d.font='24px Inter,sans-serif';
+      ctx2d.textAlign='center'; ctx2d.textBaseline='middle';
+      ctx2d.fillText('👤',x,y);
+      ctx2d.fillStyle='#3f3f5c'; ctx2d.font='9px Inter,sans-serif';
+      ctx2d.textBaseline='top'; ctx2d.fillText('Vazio',x,y+rad+5);
+    }
+    ctx2d.restore();
+  }
+}
+
+function drawTicker() {
+  if(!gameRunning||!tickerItems.length) return;
+  ctx2d.save();
+  ctx2d.textAlign='center'; ctx2d.textBaseline='middle';
+  ctx2d.font='bold 18px Outfit,Inter,sans-serif';
+  ctx2d.fillStyle='#fff';
+  ctx2d.shadowColor='rgba(0,0,0,0.8)'; ctx2d.shadowBlur=4;
+  ctx2d.fillText('Escolha sua Cor: !vermelho, !verde, !azul, !amarelo, !roxo',CW/2,160);
+  ctx2d.restore();
+
+  const y=180, h=90, iW=140;
+  ctx2d.fillStyle='rgba(0,0,0,0.6)'; ctx2d.fillRect(0,y,CW,h);
+  tickerX-=0.8;
+  if(tickerX<-iW){tickerX+=iW;tickerItems.push(tickerItems.shift());}
+  ctx2d.save();
+  ctx2d.beginPath(); ctx2d.rect(0,y,CW,h); ctx2d.clip();
+  tickerItems.forEach((item,idx)=>{
+    const ix=tickerX+idx*iW;
+    ctx2d.save(); ctx2d.textAlign='center';
+    if(item.emoji) {
+      ctx2d.font='42px Inter,sans-serif'; ctx2d.textBaseline='middle';
+      ctx2d.fillStyle='#fff'; ctx2d.fillText(item.emoji,ix+iW/2,y+34);
+    } else {
+      ctx2d.font='40px Inter,sans-serif'; ctx2d.textBaseline='middle';
+      ctx2d.fillStyle='#fff'; ctx2d.fillText('🎁',ix+iW/2,y+34);
+    }
+    ctx2d.fillStyle='#ffdd57'; ctx2d.font='bold 14px Inter,sans-serif';
+    ctx2d.textBaseline='top'; ctx2d.fillText(item.effect,ix+iW/2,y+62);
+    ctx2d.restore();
+    ctx2d.strokeStyle='#333'; ctx2d.lineWidth=2;
+    ctx2d.beginPath(); ctx2d.moveTo(ix+iW-1,y+15); ctx2d.lineTo(ix+iW-1,y+75); ctx2d.stroke();
+  });
+  ctx2d.restore();
+}
+
+function drawFloatingTexts() {
+  ctx2d.save();
+  ctx2d.font='bold 18px Inter,sans-serif';
+  ctx2d.shadowColor='black'; ctx2d.shadowBlur=4;
+  for(let i=floatingTexts.length-1;i>=0;i--) {
+    const ft=floatingTexts[i];
+    ctx2d.fillStyle=ft.color; ctx2d.globalAlpha=ft.alpha;
+    ctx2d.fillText(ft.text,ft.x,ft.y);
+    ft.y+=ft.speedY; ft.alpha-=0.015;
+    if(ft.alpha<=0) floatingTexts.splice(i,1);
+  }
+  ctx2d.restore();
+}
+
+function drawTips() {
+  if(winnerScreenActive){currentTip=null;tipTimer=0;return;}
+  const now=Date.now();
+  if(!currentTip) {
+    tipTimer+=16.67;
+    if(tipTimer>=3000) {
+      tipTimer=0;
+      let ni=Math.floor(Math.random()*TIPS.length);
+      while(ni===lastTipIndex&&TIPS.length>1) ni=Math.floor(Math.random()*TIPS.length);
+      lastTipIndex=ni;
+      currentTip={text:TIPS[ni],alpha:0,scale:0.1,state:'in',y:1040,activeTimer:0};
+      if(config.sounds.enabled) SoundEngine.play('pop');
+    }
+  } else {
+    if(currentTip.state==='in') {
+      currentTip.alpha+=0.08; currentTip.scale+=(1-currentTip.scale)*0.25;
+      if(currentTip.alpha>=1){currentTip.alpha=1;currentTip.scale=1;currentTip.state='active';currentTip.activeTimer=0;}
+    } else if(currentTip.state==='active') {
+      currentTip.activeTimer+=16.67;
+      if(currentTip.activeTimer>=5000) currentTip.state='out';
+    } else {
+      currentTip.alpha-=0.08; currentTip.scale-=0.06;
+      if(currentTip.alpha<=0){currentTip=null;tipTimer=0;}
+    }
+    if(currentTip) {
+      ctx2d.save();
+      const fo=Math.sin(now/200)*4;
+      ctx2d.translate(CW/2,currentTip.y+fo);
+      ctx2d.scale(currentTip.scale,currentTip.scale);
+      ctx2d.globalAlpha=currentTip.alpha;
+      ctx2d.font='bold 15px Outfit,Inter,sans-serif';
+      const tw=ctx2d.measureText(currentTip.text).width;
+      const cW=tw+40, cH=40;
+      ctx2d.strokeStyle=Math.floor(now/150)%2===0?'rgba(0,229,255,0.7)':'rgba(255,0,128,0.7)';
+      ctx2d.lineWidth=3;
+      ctx2d.fillStyle='rgba(10,10,20,0.85)';
+      ctx2d.beginPath();
+      ctx2d.roundRect?ctx2d.roundRect(-cW/2,-cH/2,cW,cH,20):ctx2d.rect(-cW/2,-cH/2,cW,cH);
+      ctx2d.fill(); ctx2d.stroke();
+      ctx2d.textAlign='center'; ctx2d.textBaseline='middle';
+      ctx2d.shadowColor='black'; ctx2d.shadowBlur=4;
+      ctx2d.fillStyle='#fff'; ctx2d.fillText(currentTip.text,0,0);
+      ctx2d.restore();
+    }
+  }
+}
+
+function drawStartScreen() {
+  ctx2d.fillStyle='rgba(10,10,20,0.9)';
+  ctx2d.fillRect(0,0,CW,CH);
+  ctx2d.save();
+  ctx2d.textAlign='center';
+  ctx2d.fillStyle='#fff';
+  ctx2d.font='bold 54px Outfit,Inter,sans-serif';
+  ctx2d.shadowColor='#6c63ff'; ctx2d.shadowBlur=20;
+  ctx2d.fillText(config.game.title||'Territory War',CW/2,CH/2-120);
+  ctx2d.shadowBlur=0;
+  ctx2d.fillStyle='#cbd5e1'; ctx2d.font='18px Inter,sans-serif';
+  ctx2d.fillText('Digite no chat para entrar em um time:',CW/2,CH/2-50);
+  let ty=CH/2-10;
+  config.teams.forEach(t=>{
+    ctx2d.fillStyle=t.color; ctx2d.font='bold 20px Outfit,Inter,sans-serif';
+    ctx2d.fillText(`${t.name}: ${t.command}`,CW/2,ty); ty+=35;
+  });
+  ctx2d.fillStyle='#ffaa00'; ctx2d.font='bold 18px Inter,sans-serif';
+  ctx2d.fillText('💡 Interaja para conquistar território!',CW/2,ty+10);
+  ctx2d.fillStyle='#cbd5e1'; ctx2d.font='16px Inter,sans-serif';
+  ctx2d.fillText('👍 Curtida | 💬 Chat | 🎁 Presentes',CW/2,ty+35);
+  ctx2d.fillStyle='#6c63ff';
+  ctx2d.beginPath();
+  ctx2d.roundRect?ctx2d.roundRect(startBtn.x,startBtn.y,startBtn.w,startBtn.h,10):ctx2d.rect(startBtn.x,startBtn.y,startBtn.w,startBtn.h);
+  ctx2d.fill();
+  ctx2d.fillStyle='#fff'; ctx2d.font='bold 18px Outfit,Inter,sans-serif';
+  ctx2d.fillText('▶ INICIAR JOGO',CW/2,startBtn.y+32);
+  ctx2d.restore();
+}
+
+function drawWinnerScreen() {
+  let rgba='rgba(108,99,255,0.9)';
+  if(winnerTeam) {
+    const h=winnerTeam.color.replace('#','');
+    const r=parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16);
+    rgba=`rgba(${r},${g},${b},0.9)`;
+  }
+  ctx2d.fillStyle=rgba; ctx2d.fillRect(0,0,CW,CH);
+  ctx2d.save();
+  ctx2d.textAlign='center'; ctx2d.shadowColor='black'; ctx2d.shadowBlur=15;
+  ctx2d.fillStyle='#fff';
+  ctx2d.font='bold 54px Outfit,Inter,sans-serif';
+  ctx2d.fillText('🏆 VITÓRIA! 🏆',CW/2,CH/2-160);
+  ctx2d.font='bold 36px Outfit,Inter,sans-serif';
+  ctx2d.fillText(`${winnerTeam?winnerTeam.name.toUpperCase():'NENHUM TIME'} VENCEU!`,CW/2,CH/2-80);
+  ctx2d.font='bold 22px Outfit,Inter,sans-serif';
+  ctx2d.fillText('Placar Final:',CW/2,CH/2+10);
+  let sy=CH/2+50;
+  winnerStats.forEach((s,i)=>{
+    ctx2d.font='18px Inter,sans-serif';
+    ctx2d.fillText(`${i+1}. ${s.name}: ${s.percent.toFixed(1)}% (${s.count} cel)`,CW/2,sy); sy+=35;
+  });
+  ctx2d.restore();
+}
+
+// Click handler for start button
+canvas.addEventListener('click',(e)=>{
+  if(gameRunning||winnerScreenActive) return;
+  const rect=canvas.getBoundingClientRect();
+  const scaleX=CW/rect.width, scaleY=CH/rect.height;
+  const mx=(e.clientX-rect.left)*scaleX, my=(e.clientY-rect.top)*scaleY;
+  if(mx>=startBtn.x&&mx<=startBtn.x+startBtn.w&&my>=startBtn.y&&my<=startBtn.y+startBtn.h) {
+    SoundEngine.init(); startGame();
+  }
+});
+
+// ── Main render loop ──────────────────────────────────
+function loop() {
+  ctx2d.fillStyle='#0f0f1b'; ctx2d.fillRect(0,0,CW,CH);
+  drawGrid();
+  updateParticles(); updateNamePopup();
+  drawParticles();
+  const stats=getTeamStats();
+  if(gameRunning) {
+    drawScoreboard(stats);
+    drawAvatars();
+    drawTicker();
+    drawTimer();
+    drawNamePopup();
+    drawTopGifters();
+    drawFloatingTexts();
+    drawTips();
+  } else if(winnerScreenActive) {
+    drawWinnerScreen();
+  } else {
+    drawStartScreen();
+    drawTips();
+  }
+  requestAnimationFrame(loop);
+}
+
+// ── Init ──────────────────────────────────────────────
+initGrid();
+initTicker();
+buildGiftButtons();
+updateScorePanel();
+updateTimerUI();
+loop();
+</script>
+</body>
+</html>
